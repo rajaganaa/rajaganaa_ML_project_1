@@ -1,0 +1,78 @@
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# Load the dataset
+df = pd.read_csv(r'C:\Users\Dell\OneDrive\Desktop\ML_PROJECT_1\healthcare_reviews.csv')
+
+# Data cleaning function
+def preprocess_text(text):
+    text = text.lower()
+    text = re.sub(r'\d+', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    text_tokens = word_tokenize(text)
+    text_tokens = [word for word in text_tokens if word not in stopwords.words('english')]
+    return ' '.join(text_tokens)
+
+# Apply preprocessing
+df.dropna(inplace=True)
+df['cleaned_text'] = df['Review_Text'].apply(preprocess_text)
+
+# Split the data into training and test sets
+X = df['cleaned_text']
+y = df['Rating']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Vectorize the text data using TF-IDF
+vectorizer = TfidfVectorizer(max_features=5000)
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+
+# Train a Naive Bayes classifier
+model = MultinomialNB()
+model.fit(X_train_tfidf, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test_tfidf)
+
+# Calculate evaluation metrics
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred, average='weighted')
+recall = recall_score(y_test, y_pred, average='weighted')
+f1 = f1_score(y_test, y_pred, average='weighted')
+roc_auc = roc_auc_score(pd.get_dummies(y_test), pd.get_dummies(y_pred), multi_class='ovo')
+
+print(f'Accuracy: {accuracy}')
+print(f'Precision: {precision}')
+print(f'Recall: {recall}')
+print(f'F1 Score: {f1}')
+print(f'ROC-AUC: {roc_auc}')
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(8,6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=np.unique(y), yticklabels=np.unique(y))
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Sentiment distribution
+sentiment_counts = df['Rating'].value_counts()
+plt.figure(figsize=(8,6))
+sentiment_counts.plot(kind='bar', color=['blue', 'orange', 'green'])
+plt.xlabel('Rating')
+plt.ylabel('Review_Text')
+plt.title('Sentiment Distribution')
+plt.show()
