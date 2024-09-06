@@ -1,50 +1,282 @@
+ Thegoalofthisprojectistodevelopamodelthatcanclassifysentimentsinhealthcarereviews.Thisinvolvesanalyzingtextdatafromhealthcarereviewsanddetermining
+ whetherthesentimentexpressedineachreviewispositive,negative,orneutral
+
+# Import necessary libraries
 import pandas as pd
 import numpy as np
-import re
 import nltk
+import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+from wordcloud import WordCloud
+from textblob import TextBlob
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.svm import SVC
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import cross_val_score
+from imblearn.over_sampling import RandomOverSampler
+from collections import Counter
 
 
 # Load the dataset
 df = pd.read_csv(r'C:\Users\Dell\OneDrive\Desktop\ML_PROJECT_1\healthcare_reviews.csv')
 
+#check missing values
+df.isnull()
+
 # Data cleaning function
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'\d+', '', text)
-    text = re.sub(r'\s+', ' ', text)
-    text = re.sub(r'[^\w\s]', '', text)
-    text_tokens = word_tokenize(text)
-    text_tokens = [word for word in text_tokens if word not in stopwords.words('english')]
-    return ' '.join(text_tokens)
+def clean_text(text):
+    text = re.sub(r'\W', ' ', text)  # Remove special characters
+    text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
+    text = text.lower()  # Convert text to lowercase
+    tokens = word_tokenize(text)    
+    tokens = [word for word in tokens if word not in stopwords.words('english')]
+    return ' '.join(tokens)
 
-# Apply preprocessing
+# Apply data cleaning
 df.dropna(inplace=True)
-df['cleaned_text'] = df['Review_Text'].apply(preprocess_text)
+df['cleaned_text'] = df['Review_text'].apply(clean_text)
+# Labeling based on Rating
+def label_sentiment(Rating):
+    if Rating >= 4:
+        return 'Positive'
+    elif Rating == 3:
+        return 'Neutral'
+    else:
+        return 'Negative'
 
-# Split the data into training and test sets
-X = df['cleaned_text']
-y = df['Rating']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+df['Sentiment'] = df['Rating'].apply(label_sentiment)
+
+# Handle missing values
+df.dropna(inplace=True)
+# Reset index
+df_reset = df.reset_index(drop=True)
+df_reset.head()
+
+
+# Apply lemmatization
+lemmatizer = WordNetLemmatizer()
+df_reset['Lemmatized_Reviews'] = df_reset['cleaned_text'].apply(lambda x: [lemmatizer.lemmatize(word) for word in x.split()])
+df_reset['Lemmatized_Reviews'].head()
+
+# Apply POS tags
+df_reset['POS_Tagged'] = df_reset['Lemmatized_Reviews'].apply(nltk.pos_tag)
+df_reset['POS_Tagged']
+
+df_reset['Cleaned_Reviews'] = df_reset['Lemmatized_Reviews'].apply(" ".join)
+df_reset['Cleaned_Reviews']
+df_reset.head()
+
+#!pip install textblob
+from textblob import TextBlob
+
+df_reset['Sentiment_Polarity'] = df_reset['Cleaned_Reviews'].apply(lambda x: TextBlob((x)).sentiment.polarity)
+df_reset['Sentiment_Polarity'].unique()
+
+# Apply labelling for sentiment polarity
+def categorize_sentiment(polarity):
+    if polarity > 0:
+        return "Positive"
+    elif polarity < 0:
+        return "Negative"
+    else:
+        return "Neutral"
+
+# Apply the function to the DataFrame
+df_reset['New_Sentiment'] = df_reset['Sentiment_Polarity'].apply(categorize_sentiment)
+
+# Display the new sentiment column
+df_reset['New_Sentiment']
+
+df_reset['New_Sentiment'].unique()
+df_reset.head(10)
+
+from wordcloud import WordCloud
+# Generate word cloud for positive sentiment
+positive_text = ' '.join(df_reset[df_reset['New_Sentiment']=='Positive']['Cleaned_Reviews'])
+positive_wordcloud = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(positive_text)
+
+plt.figure(figsize=(10, 7))
+plt.imshow(positive_wordcloud, interpolation="bilinear")
+plt.axis('off')
+plt.title('Word Cloud for Positive Sentiment')
+plt.show()
+
+# Generate word cloud for neutral sentiment
+neutral_text = ' '.join(df_reset[df_reset['New_Sentiment']=='Neutral']['Cleaned_Reviews'])
+neutral_wordcloud = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(neutral_text)
+
+plt.figure(figsize=(10, 7))
+plt.imshow(neutral_wordcloud, interpolation="bilinear")
+plt.axis('off')
+plt.title('Word Cloud for Neutral Sentiment')
+plt.show()
+
+negative_text = ' '.join(df_reset[df_reset['New_Sentiment']=='Negative']['Cleaned_Reviews'])
+negative_wordcloud = WordCloud(width=800, height=500, random_state=21, max_font_size=110).generate(negative_text)
+
+plt.figure(figsize=(10, 7))
+plt.imshow(negative_wordcloud, interpolation="bilinear")
+plt.axis('off')
+plt.title('Word Cloud for Negative Sentiment')
+plt.show()
+
+# Bar plot of sentiment counts
+sns.countplot(x='New_Sentiment', data=df_reset)
+plt.title('Sentiment Counts')
+plt.show()
+
+import plotly.express as px
+from collections import Counter
+
+# Assuming 'df' is your DataFrame and 'cleaned' column contains cleaned text
+words = ' '.join(df_reset['Cleaned_Reviews']).split()
+word_counts = Counter(words)
+
+word_counts_df = pd.DataFrame.from_dict(word_counts, orient='index').reset_index()
+word_counts_df.columns = ['word', 'count']
+
+fig = px.bar(word_counts_df, x='word', y='count', title='Word Counts')
+fig.show()
+
+
+from collections import Counter
+
+# Assuming 'cleaned' column contains cleaned reviews and 'Sentiment' column contains sentiment labels
+positive_words = ' '.join(df_reset[df_reset['New_Sentiment']=='Positive']['Cleaned_Reviews']).split()
+negative_words = ' '.join(df_reset[df_reset['New_Sentiment']=='Negative']['Cleaned_Reviews']).split()
+
+positive_word_counts = Counter(positive_words)
+negative_word_counts = Counter(negative_words)
+
+# Get the 10 most common words in positive and negative sentiments
+top_positive_words = positive_word_counts.most_common(10)
+top_negative_words = negative_word_counts.most_common(10)
+
+# Plot bar chart for top words in positive sentiments
+plt.figure(figsize=(10, 5))
+plt.bar(*zip(*top_positive_words), color='b')
+plt.title('Top Words in Positive Sentiments')
+plt.xlabel('Words')
+plt.ylabel('Counts')
+plt.show()
+
+# Plot bar chart for top words in negative sentiments
+plt.figure(figsize=(10, 5))
+plt.bar(*zip(*top_negative_words), color='r')
+plt.title('Top Words in Negative Sentiments')
+plt.xlabel('Words')
+plt.ylabel('Counts')
+plt.show()
+
+
+# Assuming 'Sentiment' column contains sentiment labels
+sentiment_counts = df_reset['New_Sentiment'].value_counts()
+
+plt.figure(figsize=(6, 6))
+plt.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%', startangle=140)
+plt.axis('equal')
+plt.title('Pie Chart of Sentiment Distribution')
+plt.show()
+
+# Count sentiment of word frequency
+from sklearn.feature_extraction.text import CountVectorizer
+
+cv = CountVectorizer(ngram_range=(1,2))
+X = df_reset['Cleaned_Reviews'].tolist()
+X_cv = cv.fit_transform(X)
+y=df_reset['New_Sentiment'].values
+dataset_analysis = pd.DataFrame(X_cv.toarray(), columns=cv.get_feature_names_out())
+dataset_analysis['New_Sentiment']=y
+temp_df=dataset_analysis.query("New_Sentiment=='Positive'")
+positive_df=pd.DataFrame()
+positive_df['Words']=list(temp_df.iloc[:, :-1].columns)
+positive_df['Frequency']=temp_df.iloc[:, :-1].sum().values
+positive_df = positive_df.sort_values(by='Frequency',ascending=False)
+positive_df.to_csv(r'positive_df_1.csv',index=False)
+
+
+# Positive word frequency
+positive_df.head()
+positive_df[positive_df['Words'].str.split().apply(len) > 1].sort_index()
+
+# Negative word frequency count
+temp_df=dataset_analysis.query("New_Sentiment=='Negative'")
+negative_df=pd.DataFrame()
+negative_df['Words']=list(temp_df.iloc[:, :-1].columns)
+negative_df['Frequency']=temp_df.iloc[:, :-1].sum().values
+negative_df = negative_df.sort_values(by='Frequency',ascending=False)
+negative_df.to_csv(r'negative_df_1.csv',index=False)
+
+negative_df[negative_df['Words'].str.split().apply(len) > 1].sort_index()
+
+# Neutral word frequency
+temp_df=dataset_analysis.query("New_Sentiment=='Neutral'")
+
+neutral_df=pd.DataFrame()
+neutral_df['Words']=list(temp_df.iloc[:, :-1].columns)
+neutral_df['Frequency']=temp_df.iloc[:, :-1].sum().values
+neutral_df = negative_df.sort_values(by='Frequency',ascending=False)
+neutral_df.to_csv(r'neutral_df_1.csv',index=False)
+
+neutral_df.head()
+neutral_df[neutral_df['Words'].str.split().apply(len) > 1].sort_index()
+
+# Splitting the data into features and target
+X = df_reset['Cleaned_Reviews']  # The cleaned text data
+y = df_reset['New_Sentiment']      # The sentiment label (positive, negative, neutral)
+print(X)
+print(y)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+print('X_train='+str(len(X_train)))
+print('X_test='+str(len(X_test)))
+
+print('y_train='+str(len(y_train)))
+print('y_test='+str(len(y_test)))
+
+import pprint
+unique_labels, counts = np.unique(X_train, return_counts=True)
+pprint.pprint(dict(zip(unique_labels, counts)))
+
+
+unique_labels, counts = np.unique(X_test, return_counts=True)
+pprint.pprint(dict(zip(unique_labels, counts)))
+
+
+unique_labels, counts = np.unique(y_train, return_counts=True)
+pprint.pprint(dict(zip(unique_labels, counts)))
+
+
+unique_labels, counts = np.unique(y_test, return_counts=True)
+pprint.pprint(dict(zip(unique_labels, counts)))
 
 # Vectorize the text data using TF-IDF
 vectorizer = TfidfVectorizer(max_features=5000)
 X_train_tfidf = vectorizer.fit_transform(X_train)
 X_test_tfidf = vectorizer.transform(X_test)
 
+# Naive Bayes classifier
 # Train a Naive Bayes classifier
 model = MultinomialNB()
 model.fit(X_train_tfidf, y_train)
 
+
 # Make predictions
 y_pred = model.predict(X_test_tfidf)
+
+unique_labels, counts = np.unique(y_pred, return_counts=True)
+print(dict(zip(unique_labels, counts)))
 
 # Calculate evaluation metrics
 accuracy = accuracy_score(y_test, y_pred)
@@ -59,20 +291,187 @@ print(f'Recall: {recall}')
 print(f'F1 Score: {f1}')
 print(f'ROC-AUC: {roc_auc}')
 
-# Confusion matrix
+print(confusion_matrix(y_test, y_pred))
+
+# LogisticRegression
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Initialize the Logistic Regression model
+model = LogisticRegression()
+
+# Train the model
+model.fit(X_train_tfidf, y_train)
+
+# Make predictions on the test set
+y_pred = model.predict(X_test_tfidf)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy:.2f}')
+print(classification_report(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+
+# Support Vector Classification (SVC):
+
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix
+
+# Train an SVM classifier
+svm_model = SVC(kernel='linear')
+svm_model.fit(X_train_tfidf, y_train)
+
+# Make predictions
+
+y_pred_svm = svm_model.predict(X_test_tfidf)
+
+# Evaluate the model
+print("SVM - Classification Report")
+print(classification_report(y_test, y_pred_svm))
+print("Confusion Matrix")
+print(confusion_matrix(y_test, y_pred_svm))
+
+# GradientBoostingClassifier
+
+from sklearn.ensemble import GradientBoostingClassifier
+
+# Create a Gradient Boosting Classifier
+gb = GradientBoostingClassifier(random_state=42)
+
+# Train the model using the SMOTE-resampled data
+gb.fit(X_train_tfidf, y_train)
+
+# Make predictions
+y_pred = gb.predict(X_test_tfidf)
+
+# Print the classification report
+print(classification_report(y_test, y_pred))
+
+# RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+# Initialize the Random Forest model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Train the model
+rf_model.fit(X_train_tfidf, y_train)
+
+# Make predictions on the test set
+y_pred_rf = rf_model.predict(X_test_tfidf)
+
+# Evaluate the model
+accuracy_rf = accuracy_score(y_test, y_pred_rf)
+print(f'Accuracy (Random Forest): {accuracy_rf:.2f}')
+print(classification_report(y_test, y_pred_rf))
+print(confusion_matrix(y_test, y_pred_rf))
+
+
+# Plot the confusion matrix
 cm = confusion_matrix(y_test, y_pred)
-plt.figure(figsize=(8,6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=np.unique(y), yticklabels=np.unique(y))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Negative', 'Neutral', 'Positive'], yticklabels=['Negative', 'Neutral', 'Positive'])
 plt.xlabel('Predicted')
 plt.ylabel('Actual')
-plt.title('Confusion Matrix')
+plt.title('Confusion Matrix - Logistic Regression')
 plt.show()
 
-# Sentiment distribution
-sentiment_counts = df['Rating'].value_counts()
-plt.figure(figsize=(8,6))
-sentiment_counts.plot(kind='bar', color=['blue', 'orange', 'green'])
-plt.xlabel('Rating')
-plt.ylabel('Review_Text')
+# Visualize the sentiment distribution
+df_reset['New_Sentiment'].value_counts().plot(kind='bar', color=['green', 'orange', 'red'])
 plt.title('Sentiment Distribution')
+plt.xlabel('New_Sentiment')
+plt.ylabel('Count')
 plt.show()
+
+# HYPERPARAMETER TUNING
+
+#HYPERPARAMETER TUNING
+
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'n_estimators': [50, 100, 200],  # Number of trees in the forest
+    'max_depth': [None, 10, 20, 30],  # Maximum depth of the tree
+    'min_samples_split': [2, 5, 10],  # Minimum number of samples required to split an internal node
+    'min_samples_leaf': [1, 2, 4],  # Minimum number of samples required to be at a leaf node
+    'bootstrap': [True, False]  # Method for sampling data points (with or without replacement)
+}
+
+# Create a base model
+rf = RandomForestClassifier(random_state=42)
+
+# Instantiate the grid search model
+grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1, verbose=2)
+
+# Fit the grid search to the data
+grid_search.fit(X_train_tfidf, y_train)
+
+# Print the best parameters
+print(grid_search.best_params_)
+
+#HYPERPARAMETER TUNING
+clf = RandomForestClassifier(
+    n_estimators=50,
+    max_depth=None,
+    min_samples_split=2,
+    min_samples_leaf=1,
+    bootstrap=True,
+    random_state=42
+)
+
+
+clf.fit(X_train_tfidf, y_train)
+y_pred = clf.predict(X_test_tfidf)
+print(classification_report(y_test, y_pred))
+
+
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import uniform as sp_randFloat
+from scipy.stats import randint as sp_randInt
+
+# Define the parameter grid
+param_grid = {
+    'n_estimators': sp_randInt(50, 200),
+    'max_depth': sp_randInt(2, 10),
+    'min_samples_split': sp_randFloat(),
+    'min_samples_leaf': sp_randFloat(),
+    'learning_rate': sp_randFloat()
+}
+
+# Create a RandomizedSearchCV object
+random_search = RandomizedSearchCV(estimator=gb, param_distributions=param_grid, n_iter=100, cv=3, random_state=42, n_jobs=-1)
+
+# Fit RandomizedSearchCV object to the data
+random_search.fit(X_train_tfidf, y_train)
+
+# Print the best parameters
+print(random_search.best_params_)
+
+from sklearn.metrics import classification_report
+
+# Create a new Gradient Boosting Classifier with the best parameters
+gb = GradientBoostingClassifier(
+    n_estimators=116,
+    learning_rate=0.15601864044243652,
+    max_depth=4,
+    min_samples_split=0.45924889196586716,
+    min_samples_leaf=0.09997491581800289,
+    random_state=42
+)
+
+# Train the model using the SMOTE-resampled data
+gb.fit(X_train_tfidf, y_train)
+
+# Make predictions
+y_pred = gb.predict(X_test_tfidf)
+
+# Print the classification report
+print(classification_report(y_test, y_pred))
+
+
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(model, X_train_tfidf, y_train, cv=3, scoring='accuracy')  # Example for classification
+print(scores.mean())
+
+This analysis provides actionable insights into patient feedback, helping healthcare providers enhance their services
+based on the sentiment expressed in reviews.
+
