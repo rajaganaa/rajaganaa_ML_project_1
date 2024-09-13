@@ -1,66 +1,66 @@
-# Hospital Readmissions Prediction
+# Predicting Hospital Readmissions
 
-This project focuses on predicting hospital readmissions using a Random Forest Classifier. It involves preprocessing data, training a machine learning model, evaluating its performance, and visualizing key metrics.
+## Table of Contents
+- [Project Overview](#project-overview)
+- [Problem Statement](#problem-statement)
+- [Solution Steps](#solution-steps)
+- [Workflow](#workflow)
+- [Data Description](#data-description)
+- [Challenges](#challenges)
+- [Technologies Used](#technologies-used)
+- [How to Run](#how-to-run)
 
 ## Project Overview
+The primary goal of this project is to build a predictive model that can identify patients who are at high risk of hospital readmission within 30 days after their initial discharge. This predictive model will assist healthcare providers in proactively intervening and providing targeted interventions to reduce readmission rates and improve patient outcomes.
 
-The project includes the following steps:
+## Problem Statement
+The healthcare industry faces challenges in predicting hospital readmissions accurately, which can lead to increased healthcare costs and reduced patient satisfaction. This project addresses this issue by leveraging machine learning techniques to develop a predictive model based on patient data to identify individuals at high risk of hospital readmission.
 
-1. **Data Loading**: The dataset (`synthetic_hospital_readmissions_data.csv`) containing patient information is loaded using pandas.
+## Solution Steps
+1. **Data Preprocessing**: Clean and prepare the healthcare data, handling missing values, encoding categorical variables, and ensuring data quality and consistency.
+2. **Feature Engineering**: Create relevant features from the available data, including patient demographics, medical history, previous hospitalizations, and other clinically relevant factors.
+3. **Model Building**: Develop a machine learning or statistical model capable of predicting the likelihood of hospital readmission within 30 days.
+4. **Model Evaluation**: Assess the performance of the predictive model using standard binary classification evaluation metrics such as accuracy, precision, recall, F1-score, ROC curve, and AUC.
 
-2. **Handling Missing Values**: Missing values are filled with median values for numeric features and mode values for categorical features.
+## Workflow
+1. **Data Collection**: Retrieve patient data including demographic, clinical, and hospitalization details.
+2. **Data Preprocessing**: Handle missing values, encode categorical variables, and standardize features.
+3. **Feature Engineering**: Create meaningful features to improve the predictive model.
+4. **Model Training**: Develop and train models (Logistic Regression, Decision Trees, Random Forest, etc.).
+5. **Model Evaluation**: Evaluate using accuracy, confusion matrix, and classification reports.
+6. **Deployment**: Deploy the model using a Streamlit application for prediction.
 
-3. **Encoding Categorical Variables**: Categorical variables such as Gender, Admission Type, Diagnosis, A1C Result, and Readmitted are encoded using Label Encoding from scikit-learn.
+## Data Description
+The dataset contains the following columns:
+- **Patient_ID**: Unique identifier for each patient.
+- **Age**: Age of the patient in years.
+- **Gender**: Gender of the patient (e.g., Male, Female, Other).
+- **Admission_Type**: Type of admission (e.g., Emergency, Urgent, Elective).
+- **Diagnosis**: Primary diagnosis of the patient upon admission (e.g., Heart Disease, Diabetes, Injury, Infection).
+- **Num_Lab_Procedures**: Number of laboratory procedures performed during the hospital stay.
+- **Num_Medications**: Number of medications prescribed to the patient.
+- **Num_Outpatient_Visits**: Number of outpatient visits prior to the current hospital admission.
+- **Num_Inpatient_Visits**: Number of inpatient visits prior to the current hospital admission.
+- **Num_Emergency_Visits**: Number of emergency room visits prior to the current hospital admission.
+- **Num_Diagnoses**: Number of diagnoses.
+- **A1C_Result**: Result of the A1C test, if available (e.g., Normal, Abnormal).
+- **Readmitted**: Indicates whether the patient was readmitted to the hospital within a certain time frame (e.g., Yes, No).
 
-4. **Feature Engineering**: Features are created or manipulated to prepare data for model training.
+## Challenges
+One specific challenge encountered in this project was the presence of many null values in the `A1C_Result` column. To address this, a classification model was developed to predict and fill in the missing values in the `A1C_Result` column based on other available features. Once the missing values were imputed, a predictive model for hospital readmission status was built using the completed dataset.
 
-5. **Data Splitting**: The dataset is split into training and test sets using `train_test_split` from scikit-learn.
+## Technologies Used
+- **Python**
+- **Pandas**
+- **NumPy**
+- **Scikit-learn**
+- **Seaborn**
+- **Streamlit**
 
-6. **Normalization**: Data is standardized using `StandardScaler` to ensure all features contribute equally to the model.
+## How to Run
+1. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+2. streamlit run app.py
 
-7. **Model Training**: A Random Forest Classifier (`RandomForestClassifier`) with 100 estimators is trained on the training data.
-
-8. **Model Evaluation**: Various metrics such as accuracy, precision, recall, F1 score, and ROC-AUC score are computed to evaluate the model's performance.
-
-9. **Visualization**: 
-   - Confusion matrix is plotted to visualize the true positive, false positive, true negative, and false negative predictions.
-   - ROC Curve is plotted to visualize the trade-off between true positive rate and false positive rate.
-   - Feature Importance is shown using a bar chart to understand which features contribute most to the model's predictions.
-
-## Files
-
-- `synthetic_hospital_readmissions_data.csv`: Dataset containing patient information and readmission status.
-- `hospital_readmissions_prediction.py`: Python script containing the code for data preprocessing, model training, evaluation, and visualization.
-
-## Requirements
-
-- Python 3.x
-- pandas
-- numpy
-- scikit-learn
-- matplotlib
-- seaborn
-
-## Usage
-
-1. Clone the repository:
-
-2. Install dependencies:
-
-3. Run the script:
-
-
-## Results
-
-- **Accuracy**: XX%
-- **Precision**: XX%
-- **Recall**: XX%
-- **F1 Score**: XX%
-- **ROC-AUC**: XX%
-
-## Author
-
-- [RAJAGANAPATHY](https://github.com/your-rajaganaa)
-
-Feel free to contribute, report issues, or provide feedback!
-
+This README file follows the requested structure and includes essential details about the project, making it easy to understand and run the application.
